@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: central-trabalho-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: central_trabalho
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d central_trabalho"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - central-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: central-trabalho-app
+    restart: unless-stopped
+    ports:
+      - "3030:3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/central_trabalho?schema=public"
+      JWT_SECRET: "central_trabalho_ia_super_secret_jwt_key_2025_prod"
+      ADMIN_EMAIL: "ingrid.ferreira@headsetbrasil.com"
+      ADMIN_PASSWORD: "admin123"
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - central-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  central-network:
+    driver: bridge

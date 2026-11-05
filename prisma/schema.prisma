@@ -1,0 +1,212 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Project {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?         @db.Text
+  objective    String?         @db.Text
+  status       String          @default("EM_ANDAMENTO") // PLANEJAMENTO, EM_ANDAMENTO, PAUSADO, CONCLUIDO, CANCELADO
+  startDate    DateTime?
+  deadline     DateTime?
+  color        String?         @default("#3b82f6")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  tasks        Task[]
+  agents       Agent[]
+  prompts      Prompt[]
+  tests        TestExecution[]
+  documents    TechnicalDoc[]
+  notes        Note[]
+  activities   ActivityHistory[]
+}
+
+model Task {
+  id             String          @id @default(cuid())
+  title          String
+  description    String?         @db.Text
+  objective      String?         @db.Text
+  nextStep       String?         @db.Text
+  observations   String?         @db.Text
+  priority       String          @default("MEDIA") // CRITICA, ALTA, MEDIA, BAIXA
+  status         String          @default("A_FAZER") // IDEIA, RASCUNHO, A_FAZER, EM_ANDAMENTO, EM_TESTES, AGUARDANDO_RETORNO, CONCLUIDO, CANCELADO
+  category       String?         @default("Geral")
+  assignee       String?         @default("Ingrid Ferreira")
+  externalLinks  String?         @db.Text
+  deadline       DateTime?
+  completedAt    DateTime?
+  projectId      String?
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  checklists     TaskChecklist[]
+  attachments    Attachment[]
+  activities     ActivityHistory[]
+}
+
+model TaskChecklist {
+  id        String   @id @default(cuid())
+  title     String
+  completed Boolean  @default(false)
+  order     Int      @default(0)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Agent {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?         @db.Text
+  objective     String?         @db.Text
+  company       String?
+  status        String          @default("DESENVOLVIMENTO") // PLANEJAMENTO, DESENVOLVIMENTO, EM_TESTES, HOMOLOGACAO, EM_PRODUCAO, DESCONTINUADO
+  environment   String?         @default("Produção")
+  mainPrompt    String?         @db.Text
+  procedures    String?         @db.Text
+  tools         String?         @db.Text
+  apis          String?         @db.Text
+  businessRules String?         @db.Text
+  limitations   String?         @db.Text
+  observations  String?         @db.Text
+  workflowLinks String?         @db.Text
+  projectId     String?
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  prompts       Prompt[]
+  tests         TestExecution[]
+  activities    ActivityHistory[]
+}
+
+model Prompt {
+  id             String          @id @default(cuid())
+  name           String
+  objective      String?         @db.Text
+  description    String?         @db.Text
+  content        String          @db.Text
+  version        String          @default("1.0.0")
+  status         String          @default("EM_DESENVOLVIMENTO") // RASCUNHO, EM_DESENVOLVIMENTO, EM_TESTES, APROVADO, PRODUCAO, ARQUIVADO
+  expectedResult String?         @db.Text
+  knownIssues    String?         @db.Text
+  observations   String?         @db.Text
+  agentId        String?
+  agent          Agent?          @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  projectId      String?
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  versions       PromptVersion[]
+}
+
+model PromptVersion {
+  id        String   @id @default(cuid())
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  version   String
+  content   String   @db.Text
+  changelog String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+model TestExecution {
+  id               String       @id @default(cuid())
+  name             String
+  scenario         String?      @db.Text
+  objective        String?      @db.Text
+  expectedResult   String?      @db.Text
+  actualResult     String?      @db.Text
+  status           String       @default("PLANEJADO") // PLANEJADO, EM_EXECUCAO, APROVADO, FALHOU, AGUARDANDO_CORRECAO
+  identifiedError  String?      @db.Text
+  rootCause        String?      @db.Text
+  appliedSolution  String?      @db.Text
+  nextAction       String?      @db.Text
+  executionLink    String?
+  observations     String?      @db.Text
+  executionDate    DateTime     @default(now())
+  agentId          String?
+  agent            Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  projectId        String?
+  project          Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  attachments      Attachment[]
+}
+
+model TechnicalDoc {
+  id             String   @id @default(cuid())
+  title          String
+  category       String   @default("API") // API, Procedimento, Arquitetura, Regras de Negocio, Outro
+  endpoint       String?
+  httpMethod     String?
+  authentication String?
+  requestHeaders String?  @db.Text
+  requestPayload String?  @db.Text
+  responsePayload String? @db.Text
+  businessRules  String?  @db.Text
+  procedures     String?  @db.Text
+  technicalNotes String?  @db.Text
+  externalLinks  String?  @db.Text
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Note {
+  id                 String   @id @default(cuid())
+  title              String
+  content            String   @db.Text
+  category           String?  @default("Ideia") // Ideia, Rascunho, Anotacao
+  isImplemented      Boolean  @default(false)
+  convertedToTaskId  String?
+  projectId          String?
+  project            Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ActivityHistory {
+  id          String   @id @default(cuid())
+  action      String   // CRIACAO, EDICAO, STATUS_ALTERADO, CONCLUSAO, EXCLUSAO, CONVERSAO
+  entityType  String   // TASK, PROJECT, AGENT, PROMPT, TEST, NOTE, DOC
+  entityId    String
+  description String
+  metadata    String?  @db.Text
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentId     String?
+  agent       Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  name      String
+  url       String
+  type      String?        // LINK, IMAGE, DOCUMENT
+  taskId    String?
+  task      Task?          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  testId    String?
+  test      TestExecution? @relation(fields: [testId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+}
